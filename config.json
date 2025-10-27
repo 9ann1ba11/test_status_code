@@ -1,0 +1,12 @@
+{
+  "com_port": "COM3",
+  "baudrate": 9600,
+  "unit_id": 1,
+
+  "address": {
+    "actuator": "42559",
+    "security_zone": "",
+    "fire_zone": "41015",
+    "device": "40001"
+  }
+}
