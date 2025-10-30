@@ -8,6 +8,8 @@ def load_config():
         return json.load(f)
 
 
+
+
 def read_register(client, address):
     try:
         address = int(address)
@@ -32,7 +34,8 @@ class StatusDecoder:
             0x40: "Вскрытие", 
             0x80: "Неисправность питания",
             0x0200: "На охране",
-            0x0400: "Обрыв АЛС"
+            0x0400: "Обрыв АЛС",
+            0x0800: "Короткое замыкание АЛС"
             
         }
         self.status_masks_actuator = {
@@ -77,58 +80,53 @@ class StatusDecoder:
     def decode_device(self, status_value):
         active = []
         status_value = self.hex_int(status_value)
+
+        if status_value == 0xffff:
+            active.append('Неизвестно или нет связи с прибором')
+        else:
         
-        for mask, description in self.status_masks_device.items():
-            if status_value & mask:
-                active.append(description)
+            for mask, description in self.status_masks_device.items():
+                if status_value & mask:
+                    active.append(description)
         
         return active
 
     def decode_actuator(self, status_value):
         active = []
         status_value = self.hex_int(status_value)
-        
-        for mask, description in self.status_masks_actuator.items():
-            if status_value & mask:
-                active.append(description)
+        if status_value == 0xffff:
+            active.append('Неизвестно или нет связи с прибором')
+        else:
+            for mask, description in self.status_masks_actuator.items():
+                if status_value & mask:
+                    active.append(description)
         
         return active
 
     def decode_sec_zone(self, status_value):
         active = []
         status_value = self.hex_int(status_value)
-        
-        for mask, description in self.status_masks_sec_zone.items():
-            if status_value & mask:
-                active.append(description)
+        if status_value == 0xffff:
+            active.append('Неизвестно или нет связи с прибором')
+        else:
+            for mask, description in self.status_masks_sec_zone.items():
+                if status_value & mask:
+                    active.append(description)
         
         return active
 
     def decode_fire_zone(self, status_value):
         active = []
         status_value = self.hex_int(status_value)
-        
-        for mask, description in self.status_masks_fire_zone.items():
-            if status_value & mask:
-                active.append(description)
+        if status_value == 0xffff:
+            active.append('Неизвестно или нет связи с прибором')
+        else:
+            for mask, description in self.status_masks_fire_zone.items():
+                if status_value & mask:
+                    active.append(description)
         
         return active
     
-    # def get_detailed_info(self, status_value):
-    #     active_flags = self.decode(status_value)
-        
-    #     return {
-    #         'raw_value': status_value,
-    #         'hex_value': f"0x{status_value:04X}",
-    #         'active_statuses': active_flags,
-    #         'is_normal': status_value == 0,
-    #         'has_alarm': bool(status_value & 0x0004),  
-    #         'has_fire': bool(status_value & 0x0002),   
-    #         'has_fault': bool(status_value & 0x0001),  
-    #     }
-
-
-
 def main():
     cfg = load_config()
 
@@ -153,27 +151,65 @@ def main():
 
     decoder = StatusDecoder()
 
+
+
+
     try:
         while True:
-            if addresses.get("actuator"):
-                code = read_register(client, addresses["actuator"])
+            
+            actuator_keys = [key for key in addresses.keys() 
+                            if "actuator" in key and addresses[key] and addresses[key].strip()]
+            for key in actuator_keys:
+                code = read_register(client, addresses[key])
                 codes = decoder.decode_actuator(code)
-                print(f"ИУ ({addresses['actuator']}): {codes}")
+                print(f"ИУ ({key} - {addresses[key]}): {codes}")
 
-            if addresses.get("security_zone"):
-                code = read_register(client, addresses["security_zone"])
+            
+            security_keys = [key for key in addresses.keys() 
+                            if "security_zone" in key and addresses[key] and addresses[key].strip()]
+            for key in security_keys:
+                code = read_register(client, addresses[key])
                 codes = decoder.decode_sec_zone(code)
-                print(f"Охранная зона ({addresses['security_zone']}): {codes}")
+                print(f"Охранная зона ({key} - {addresses[key]}): {codes}")
 
-            if addresses.get("fire_zone"):
-                code = read_register(client, addresses["fire_zone"])
+            
+            fire_keys = [key for key in addresses.keys() 
+                        if "fire_zone" in key and addresses[key] and addresses[key].strip()]
+            for key in fire_keys:
+                code = read_register(client, addresses[key])
                 codes = decoder.decode_fire_zone(code)
-                print(f"Пожарная зона ({addresses['fire_zone']}): {codes}")
+                print(f"Пожарная зона ({key} - {addresses[key]}): {codes}")
 
-            if addresses.get("device"):
-                code = read_register(client, addresses["device"])
+            
+            device_keys = [key for key in addresses.keys() 
+                          if "device" in key and addresses[key] and addresses[key].strip()]
+            for key in device_keys:
+                code = read_register(client, addresses[key])
                 codes = decoder.decode_device(code)
-                print(f"Прибор ({addresses['device']}): {codes}")
+                print(f"Прибор ({key} - {addresses[key]}): {codes}")
+
+            
+    # try:
+    #     while True:
+    #         if addresses.get("actuator"):
+    #             code = read_register(client, addresses["actuator"])
+    #             codes = decoder.decode_actuator(code)
+    #             print(f"ИУ ({addresses['actuator']}): {codes}")
+
+    #         if addresses.get("security_zone"):
+    #             code = read_register(client, addresses["security_zone"])
+    #             codes = decoder.decode_sec_zone(code)
+    #             print(f"Охранная зона ({addresses['security_zone']}): {codes}")
+
+    #         if addresses.get("fire_zone"):
+    #             code = read_register(client, addresses["fire_zone"])
+    #             codes = decoder.decode_fire_zone(code)
+    #             print(f"Пожарная зона ({addresses['fire_zone']}): {codes}")
+
+    #         if addresses.get("device"):
+    #             code = read_register(client, addresses["device"])
+    #             codes = decoder.decode_device(code)
+    #             print(f"Прибор ({addresses['device']}): {codes}")
 
             print("---")
             time.sleep(2)
@@ -186,6 +222,7 @@ def main():
 
     finally:
         client.close()
+
 
 
 if __name__ == "__main__":
